@@ -32,7 +32,7 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main\n" > /e
 RUN apt-get update
 
 # Install postgres-client
-RUN apt-get -y install postgresql-client-9.3
+RUN apt-get -y install postgresql-client-9.3 libpq-dev
 
 # Install node.js environment
 RUN apt-get install -y nodejs git
@@ -41,24 +41,35 @@ RUN npm install -g bower grunt-cli
 # Install packages for building ruby
 RUN apt-get update
 RUN apt-get install -y --force-yes build-essential curl git
-RUN apt-get install -y --force-yes zlib1g-dev libssl-dev libreadline-dev libyaml-dev libxml2-dev libxslt-dev
+RUN apt-get install -y --force-yes openssl libreadline-dev curl zlib1g zlib1g-dev libssl-dev libyaml-dev libxml2-dev libxslt-dev autoconf libc6-dev ncurses-dev automake libtool bison libcurl4-openssl-dev
 RUN apt-get clean
 
+USER teamcity
+ENV HOME /home/teamcity
 # Install rbenv and ruby-build
-RUN git clone https://github.com/sstephenson/rbenv.git /root/.rbenv
-RUN git clone https://github.com/sstephenson/ruby-build.git /root/.rbenv/plugins/ruby-build
-RUN ./$HOME/.rbenv/plugins/ruby-build/install.sh
-ENV PATH $HOME/.rbenv/bin:$PATH
-RUN echo 'eval "$(rbenv init -)"' >> /etc/profile.d/rbenv.sh # or /etc/profile
-RUN echo 'eval "$(rbenv init -)"' >> .bashrc
+RUN git clone https://github.com/sstephenson/rbenv.git /home/teamcity/.rbenv
+RUN git clone https://github.com/sstephenson/ruby-build.git /home/teamcity/.rbenv/plugins/ruby-build
+ENV PATH /home/teamcity/.rbenv/shims:/home/teamcity/.rbenv/bin:$PATH
+RUN eval "$(rbenv init -)"
+RUN echo 'export PATH="/home/teamcity/.rbenv/bin:$PATH"' >> ~/.bashrc
+RUN echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+
 
 # Install multiple versions of ruby
 ENV CONFIGURE_OPTS --disable-install-doc
+ENV RUBY_CONFIGURE_OPTS --with-readline-dir=/usr/lib/x86_64-linux-gnu/libreadline.so
 ADD ./versions.txt $HOME/versions.txt
 RUN xargs -L 1 rbenv install < $HOME/versions.txt
 
 # Install Bundler for each version of ruby
-RUN echo 'gem: --no-rdoc --no-ri' >> $HOME/.gemrc
-RUN bash -l -c 'for v in $(cat $HOME/versions.txt); do rbenv global $v; gem install bundler compass; done'
+RUN echo 'gem: --no-rdoc --no-ri' >> /home/teamcity/.gemrc
+RUN bash -l -c 'for v in $(cat /home/teamcity/versions.txt); do rbenv global $v; gem install bundler pg compass; done'
+
+USER root
+ENV HOME /root
+RUN chown -R teamcity:teamcity /home/teamcity
+
 
 ADD service /etc/service
+
+
