@@ -57,18 +57,19 @@ RUN echo 'eval "$(rbenv init -)"' >> ~/.bashrc
 
 # Install multiple versions of ruby
 ENV CONFIGURE_OPTS --disable-install-doc
-ENV RUBY_CONFIGURE_OPTS --with-readline-dir=/usr/lib/x86_64-linux-gnu/libreadline.so
-ADD ./versions.txt $HOME/versions.txt
-RUN xargs -L 1 rbenv install < $HOME/versions.txt
+RUN curl -fsSL https://gist.github.com/mislav/a18b9d7f0dc5b9efc162.txt | rbenv install --patch 2.1.1
+RUN rbenv install 2.1.2
 
 # Install Bundler for each version of ruby
 RUN echo 'gem: --no-rdoc --no-ri' >> /home/teamcity/.gemrc
-RUN bash -l -c 'for v in $(cat /home/teamcity/versions.txt); do rbenv global $v; gem install bundler pg compass; done'
+RUN bash -l -c 'for v in $(rbenv versions); do rbenv global $v; gem install bundler pg compass saas; done'
 
 USER root
 ENV HOME /root
 RUN chown -R teamcity:teamcity /home/teamcity
 
+RUN npm install -g bower grunt-cli protractor
+RUN apt-get install -y --force-yes imagemagick
 
 ADD service /etc/service
 
